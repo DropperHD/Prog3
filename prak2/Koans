@@ -1,0 +1,90 @@
+package prog3.prak2;
+
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.Collectors;
+
+public class Koans {
+
+    public static Mathe plus = a -> a +1;
+    public static Mathe quadrat = a -> a * a;
+
+    interface Mathe {
+        int fkt(int a);
+    }
+    interface d{
+        double fkt();
+    }
+
+
+    //1
+
+    public static void mapArray(int[] array, Mathe f) {
+        for (int i = 0; i < array.length; i++) {
+            array[i] = f.fkt(array[i]);
+        }
+    }
+
+    //2
+
+    public static double[] fillArray(int length, DoubleSupplier s){
+        double[] array = new double[length];
+        for(int i = 0;i < length;i++){
+            array[i] = s.getAsDouble();
+        }
+        return array;
+    }
+
+    //3
+
+    public static int[] iterateFunction(int length, int first, Mathe f){
+        int[] array = new int[length];
+        array[0] = first;
+
+        for(int i = 1;i < length;i++){
+            array[i] = f.fkt(array[i-1]);
+        }
+        return array;
+    }
+
+    //4
+
+    public static <T> T min(T[] elements, Comparator<T> c) {
+        T min = elements[0];
+        for(T element : elements){
+            if(element != null && c.compare(element,min) < 0){
+                min = element;
+            }
+        }
+        return min;
+    }
+
+    //5
+
+    public static Function<Double,Double> createMultiplier(double d){
+        return x -> d * x;
+    }
+
+    //6
+    
+    public static void forEachArray(String[] strings, Consumer<String> c){
+        for(String string : strings){
+            c.accept(string);
+        }
+    }
+
+    //7
+    
+    public static <T> Predicate<T> duplicateChecker(){
+        List<T> list = new ArrayList<>();
+        return x -> {
+            if(list.contains(x)){
+                return true;
+            } else {
+                list.add(x);
+                return false;
+            }
+        };
+    }
+
+}
