@@ -1,0 +1,56 @@
+package prog3.prak2;
+
+@FunctionalInterface
+public interface RealFunction {
+    double apply(double x);
+
+    static RealFunction constant(double c){
+        return x -> c;
+    }
+
+    static RealFunction linear(double a, double b){
+        return x -> a * x + b;
+    }
+
+    static RealFunction sine (double a, double f){
+        return x -> a*Math.sin(f*x);
+    }
+
+    static RealFunction exp() {
+        return x -> Math.exp(x);
+    }
+
+    default RealFunction addTo(RealFunction f){
+        return x -> this.apply(x) + f.apply(x);
+    }
+
+    default RealFunction composeWith(RealFunction f){
+        return x-> this.apply(f.apply(x));
+    }
+
+    default RealFunction multiplyWith(RealFunction... funs){
+        return x -> {
+            double res = this.apply(x);
+            for (RealFunction f : funs) {
+                res = res * f.apply(x);
+            }
+            return res;
+        };
+    }
+
+    default RealFunction approxDiff(double h) {
+        return x -> (this.apply(x + h) - this.apply(x) )/ h;
+
+    }
+
+    default RealFunction max(RealFunction ... funs){
+        return x -> {
+            double res = this.apply(x);
+            for(RealFunction f : funs){
+                res = Math.max(res,f.apply(x));
+            }
+            return res;
+        };
+    }
+
+}
