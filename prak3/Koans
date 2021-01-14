@@ -1,0 +1,102 @@
+package prak3;
+
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.*;
+
+public class Koans {
+
+    public static <T> long countDistinctEntries(Collection<T> entries){
+        return entries.stream().distinct().count();
+    }
+
+
+    public static long countEvenNumbers(int[] ints) {
+        return Arrays.stream(ints).filter(n -> n % 2 == 0).count();
+    }
+
+    public static int[] intsFromStrings(String ... Strings) {
+        return Arrays.stream(Strings).mapToInt(Integer::parseInt).toArray();
+    }
+
+    public static double[] randomSum(int i) {
+        return DoubleStream.iterate(0d,x->x+ Math.random()).limit(i).toArray();
+    }
+
+
+
+
+    public static double dotProduct(double[] v1, double[] v2) {
+        return IntStream.range(0,v1.length).mapToDouble(i -> v1[i] * + v2[i]).sum();
+    }
+
+
+
+    public static Map<Integer,List<String>> stringsForLength(Collection<String> strings){
+        return strings.stream().collect(Collectors.groupingBy(String::length));
+
+    }
+
+    public static LongStream collatzSeries(int i) {
+        return LongStream.iterate(i,x -> {
+           if(x % 2 == 0)
+               return x/2;
+           else return x * 3 +1;
+        });
+    }
+
+    public static <T> Predicate<T> duplicateChecker(){
+        Set<T> set = new HashSet<>();
+
+        return x -> {
+            if (set.contains(x))
+                return true;
+            else{
+                set.add(x);
+                return false;
+            }
+        };
+    }
+
+    public static LongStream collatzTruncated(int start){
+        LongStream stream = collatzSeries(start);
+        Predicate<Long> checker = duplicateChecker();
+
+        return stream.takeWhile(n -> !checker.test(n));
+    }
+
+
+
+
+    public static boolean collatzOrbit(int i) {
+        return collatzTruncated(i).anyMatch(n -> n == 1);
+    }
+
+    public static boolean collatzTrueForLimit(int i) {
+        return IntStream.range(1,i).parallel().anyMatch(Koans::collatzOrbit);
+    }
+
+
+    private static class Fib{
+        final long first;
+        final long second;
+
+        Fib(long first , long second){
+            this.first = first;
+            this.second = second;
+        }
+        public long sum(){
+            return first + second;
+        }
+
+        public long getFirst() {
+            return first;
+        }
+    }
+
+    public static LongStream fibonacciStream() {
+        return Stream.iterate(new Fib(0,1), fib -> new Fib(fib.second,fib.sum())).mapToLong(Fib::getFirst);
+    }
+/*
+ */
+}
