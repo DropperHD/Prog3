@@ -1,0 +1,150 @@
+package main.java.gameslib;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+
+public class GamesLibrary{
+
+  private Set<Platform> platforms;
+
+  private Set<Game> games;
+
+  public GamesLibrary(){
+    this.platforms = new TreeSet<Platform>();
+    this.games = new TreeSet<Game>();
+  }
+
+  public void addPlatform(Platform platform){
+    if (platform == null)
+      throw new IllegalArgumentException("platform must not be null");
+
+    if (platforms.contains(platform))
+      throw new GamesLibraryException("Platform already in games library");
+
+    platforms.add(platform);
+
+  }
+
+  double getAverageMetacriticScore() {
+    Set<Game> set = this.getGamesReadOnly();
+    return set.stream().mapToInt(Game::getMetacriticScore).average().orElse(0);
+
+  }
+
+  List<Game> getGamesForGenre(Genre genre){
+    return games.stream().filter(n -> n.getGenre() == genre).collect(Collectors.toList());
+  }
+
+  boolean gameReleaseBetween(int begin, int end){
+    return games.stream().anyMatch(game -> game.getReleaseYear() >= begin && game.getReleaseYear() <= end);
+  }
+
+  List<Genre> getGenresWithGames(){
+    return games.stream().map(Game::getGenre).distinct().collect(Collectors.toList());
+  }
+
+  private Comparator<Game> metacriticcomp(){
+      return (game1,game2) -> Integer.compare(game1.getMetacriticScore(),game2.getMetacriticScore());
+  }
+  List<Game> topGames(long n){
+    return games.stream().sorted(metacriticcomp()).limit(n).collect(Collectors.toList());
+  }
+  String getTopTenListString(){
+    List<Game> topgames = topGames(10);
+    return topgames.stream().map(game -> new StringBuilder(game.getName())).reduce((builder,line) -> builder.append(","+ line)).orElseGet(StringBuilder::new).toString() ;
+  }
+
+  public void removePlatform(Platform platform){
+
+    if (platform == null)
+      throw new IllegalArgumentException("platform must not be null");
+
+    if (!platforms.contains(platform))
+      throw new GamesLibraryException("platform is not in games library");
+
+
+    Set<Game> gamesToRemove = new HashSet<Game>();
+
+    for (Game game : games){
+      if (game.getPlatform().equals(platform)){
+        gamesToRemove.add(game);
+      }
+    }
+
+    games.removeAll(gamesToRemove);
+
+    platforms.remove(platform);
+
+  }
+
+  public void addGame(Game game){
+
+    if (game == null)
+      throw new IllegalArgumentException("game must not be null");
+
+    if (!platforms.contains(game.getPlatform()))
+      throw new GamesLibraryException("Platform of game not in games library, add platform first");
+
+    if (games.contains(game))
+      throw new GamesLibraryException("Game already in games library");
+
+    games.add(game);
+  }
+
+  public void removeGame(Game game){
+    if (game == null)
+      throw new IllegalArgumentException("game must not be null");
+
+    if (!games.contains(game))
+      throw new GamesLibraryException("game is not in games library");
+
+    games.remove(game);
+  }
+
+  public Set<Game> getGamesReadOnly(){
+    return Collections.unmodifiableSet(games);
+  }
+
+  public Set<Platform> getPlatformsReadOnly(){
+    return Collections.unmodifiableSet(platforms);
+  }
+
+  public Game getBestGame(){
+    return games.stream().max(metacriticcomp()).orElse(null);
+  }
+
+  public Map<Genre, Long> getGenreCount(){
+   return games.stream().collect(Collectors.groupingBy(Game::getGenre,Collectors.counting()));
+
+  }
+
+  public Map<Platform, List<Game>> getGamesForPlatform(){
+    return games.stream().collect(Collectors.groupingBy(Game::getPlatform));
+  }
+
+  public Map<Platform, Double> getAverageScoreForPlatform(){
+    return getGamesForPlatform().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,entry -> entry.getValue().stream().mapToInt(Game::getMetacriticScore).average().orElse(0)));
+  }
+
+  public Platform getBestPlatform(){
+   return getAverageScoreForPlatform().entrySet().stream().max(Comparator.comparingDouble(Map.Entry::getValue)).orElse(null).getKey();
+  }
+
+  public List<Game> sortGamesByMetacriticScore(){
+    return games.stream().sorted((e1,e2) -> Double.compare(e2.getMetacriticScore(),e1.getMetacriticScore())).collect(Collectors.toList());
+  }
+
+  public List<Game> sortGamesByReleaseYear(){
+    return games.stream().sorted((e1,e2) -> Double.compare(e1.getReleaseYear(),e2.getReleaseYear())).collect(Collectors.toList());
+  }
+
+
+}
