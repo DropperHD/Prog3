@@ -1,0 +1,171 @@
+package imagefilter;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static java.lang.System.out;
+
+public class ImageFilterPipeline {
+
+  private final String[] imageFiles;
+
+  double[][] sourceImage;
+  double[][] filteredImage;
+
+  public ImageFilterPipeline(String[] imageFiles, String outputPrefix){
+    this.imageFiles = imageFiles;
+  }
+
+  private void loadImages(
+      ReentrantLock sourceImageLock,
+      Condition sourceImageReady,
+      Condition sourceImageAccepted){
+
+    for (String imageFile : imageFiles){
+
+      out.printf("loadImages: Reading %s%n", imageFile);
+      double[][] localSourceImage = ImageUtils.loadImage(imageFile);
+
+      try {
+        sourceImageLock.lock();
+
+        while (sourceImage != null)
+          sourceImageAccepted.await();
+
+        sourceImage = localSourceImage;
+
+        sourceImageReady.signal();
+
+      } 
+      catch (InterruptedException e){
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+        return;
+      }
+      finally {
+        sourceImageLock.unlock();
+      }
+
+
+    }
+
+  }
+
+  private void filterImages(
+      ReentrantLock sourceImageLock,
+      ReentrantLock filteredImageLock,
+      Condition sourceImageReady,
+      Condition sourceImageAccepted,
+      Condition filteredImageReady,
+      Condition filteredImageAccepted){
+
+    for (String imageFile : imageFiles) {
+
+      double[][] localSourceImage = null;
+
+      try {
+
+        sourceImageLock.lock();
+
+        while (sourceImage == null)
+          sourceImageReady.await();
+
+        localSourceImage = sourceImage;
+        sourceImage = null;
+
+        sourceImageAccepted.signal();
+      } catch (InterruptedException e){
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+      } finally {
+        sourceImageLock.unlock();
+      }
+
+      out.printf("filterImages: Processing %s%n", imageFile);
+      double[][] localFilteredImage = 
+        ImageFilter.filterImage(
+            localSourceImage,
+            localSourceImage.length, localSourceImage[0].length,
+            v -> Math.pow(v, 0.5));
+
+      try {
+
+        filteredImageLock.lock();
+
+        while (filteredImage != null)
+          filteredImageAccepted.await();
+
+        filteredImage = localFilteredImage;
+
+        filteredImageReady.signal();
+      } catch (InterruptedException e){
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+      } finally {
+        filteredImageLock.unlock();
+      }
+    }
+
+  }
+
+  private void saveImages(
+      ReentrantLock filteredImageLock,
+      Condition filteredImageReady,
+      Condition filteredImageAccepted){
+
+    for (String imageFile : imageFiles){
+
+      double[][] localFilteredImage = null;
+
+      try {
+
+        filteredImageLock.lock();
+
+        while (filteredImage == null)
+          filteredImageReady.await();
+
+        localFilteredImage = filteredImage;
+        filteredImage = null;
+
+        filteredImageAccepted.signal();
+
+      } catch (InterruptedException e){
+        e.printStackTrace();
+        Thread.currentThread().interrupt();
+      } finally {
+        filteredImageLock.unlock();
+      }
+
+      
+      out.printf("saveImages: writing %s%n", imageFile);
+      ImageUtils.saveImage(localFilteredImage, "filtered-"+imageFile);
+
+    }
+
+  }
+
+  public void start(){
+    ReentrantLock filteredImageLock = new ReentrantLock();
+    ReentrantLock sourceImageLock = new ReentrantLock();
+
+    Condition sourceImageReady = sourceImageLock.newCondition();
+    Condition sourceImageAccepted = sourceImageLock.newCondition();
+    Condition filteredImageReady = filteredImageLock.newCondition();
+    Condition filteredImageAccepted = filteredImageLock.newCondition();
+
+    (new Thread(() -> loadImages(sourceImageLock, sourceImageReady, sourceImageAccepted))).start();
+    (new Thread(() -> filterImages(
+          sourceImageLock, filteredImageLock, 
+          sourceImageReady, sourceImageAccepted, 
+          filteredImageReady, filteredImageAccepted))).start();
+
+    saveImages(filteredImageLock, filteredImageReady, 
+        filteredImageAccepted);
+
+  }
+
+
+  
+}
